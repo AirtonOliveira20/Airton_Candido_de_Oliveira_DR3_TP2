@@ -1,0 +1,32 @@
+### ---------- livros-service (host 18081 -> container 8081) ----------
+GET http://localhost:18081/livros
+
+###
+GET http://localhost:18081/livros/1
+
+###
+POST http://localhost:18081/livros
+Content-Type: application/json
+
+{ "titulo": "Domain-Driven Design", "autor": "Eric Evans" }
+
+###
+PUT http://localhost:18081/livros/1/disponibilidade
+Content-Type: application/json
+
+{ "disponivel": true }
+
+### ---------- emprestimos-service (host 18082 -> container 8082) - chama o livros-service ----------
+GET http://localhost:18082/emprestimos/livros-disponiveis
+
+###
+POST http://localhost:18082/emprestimos
+Content-Type: application/json
+
+{ "livroId": 1, "nomeLeitor": "Airton" }
+
+###
+GET http://localhost:18082/emprestimos
+
+###
+POST http://localhost:18082/emprestimos/1/devolucao

@@ -1,0 +1,48 @@
+# Sistema de Biblioteca - sobe os 2 microsservicos com um unico comando:
+#   docker compose up --build        (primeira vez, ou depois de alterar o codigo)
+#   docker compose up                (usa as imagens ja construidas)
+#   docker compose down              (para e remove containers e rede)
+#
+# As portas do host vem do arquivo .env (PORTA_LIVROS / PORTA_EMPRESTIMOS).
+
+name: biblioteca
+
+services:
+
+  livros-service:
+    build: ./livros-service                    # usa livros-service/Dockerfile
+    image: biblioteca/livros-service:1.0       # nome/tag da imagem gerada
+    container_name: livros-service
+    ports:
+      - "${PORTA_LIVROS:-18081}:8081"          # host:container
+    networks:
+      - biblioteca-net
+    healthcheck:                               # "pronto" = /actuator/health respondendo
+      # usa curl se existir na imagem; senao, testa se a porta 8081 ja aceita conexao (bash /dev/tcp)
+      test: ["CMD-SHELL", "curl -fs http://localhost:8081/actuator/health || bash -c '</dev/tcp/127.0.0.1/8081' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  emprestimos-service:
+    build: ./emprestimos-service
+    image: biblioteca/emprestimos-service:1.0
+    container_name: emprestimos-service
+    ports:
+      - "${PORTA_EMPRESTIMOS:-18082}:8082"
+    environment:
+      # "livros-service" e o NOME DO SERVICO acima; o DNS da rede do Compose
+      # resolve esse nome para o IP do container. Porta interna: 8081.
+      LIVROS_SERVICE_URL: http://livros-service:8081
+    networks:
+      - biblioteca-net
+    depends_on:
+      livros-service:
+        condition: service_healthy             # so sobe depois que o livros-service estiver UP
+    restart: unless-stopped
+
+networks:
+  biblioteca-net:
+    driver: bridge
